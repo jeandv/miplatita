@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { db } from './db'
-import { user, session, authAccount, verification } from './db/schema'
+import { db } from './db/index.js'
+import { user, session, authAccount, verification } from './db/schema.js'
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,

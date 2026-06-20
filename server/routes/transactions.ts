@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { eq, and, gte, lt, desc, sql, type SQL } from 'drizzle-orm'
-import { db } from '../db'
-import { transaction } from '../db/schema'
-import type { AppEnv } from '../types'
+import { db } from '../db/index.js'
+import { transaction } from '../db/schema.js'
+import type { AppEnv } from '../types.js'
 
 export const transactionRoutes = new Hono<AppEnv>()
 
