@@ -1,9 +1,7 @@
 import { QueryClient } from '@tanstack/react-query'
-import { loadFinanceData } from './storage'
-import { financeKeys } from './query-keys'
 
 export function createQueryClient(): QueryClient {
-  const client = new QueryClient({
+  return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -18,8 +16,4 @@ export function createQueryClient(): QueryClient {
       },
     },
   })
-
-  client.setQueryData(financeKeys.all, loadFinanceData())
-
-  return client
 }

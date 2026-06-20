@@ -10,69 +10,84 @@ import type {
   FinanceData,
   Transaction,
 } from '../types/finance'
+import type {
+  CreateAccountInput,
+  CreateCategoryInput,
+  CreateTransactionInput,
+  UpdateTransactionInput,
+} from '../lib/persistence'
 import {
   addAccount,
   addCustomCategory,
   addTransaction,
   computeAccountBalance,
   computeTotalsByCurrency,
-  persistFinanceData,
   removeAccount,
   removeTransaction,
   updateAccount,
   updateTransaction,
 } from '../lib/finance-store'
 import { financeKeys } from '../lib/query-keys'
-import { loadFinanceData } from '../lib/storage'
+import { usePersistence } from '../contexts/AuthProvider'
+
+// ---------------------------------------------------------------------------
+// Shared query options builder (needs strategy from context)
+// ---------------------------------------------------------------------------
+
+function useFinanceQueryOptions() {
+  const strategy = usePersistence()
+  return {
+    queryKey: financeKeys.all,
+    queryFn: () => strategy.fetchAll(),
+    staleTime: Infinity,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Data hooks
+// ---------------------------------------------------------------------------
 
 type FinanceContext = { previous?: FinanceData }
 
-function readData(): FinanceData {
-  return loadFinanceData()
-}
-
-export const financeQueryOptions = {
-  queryKey: financeKeys.all,
-  queryFn: readData,
-  staleTime: Infinity,
-  initialData: () => loadFinanceData(),
-  initialDataUpdatedAt: () => Date.now(),
-} as const
-
 export function useFinanceData() {
+  const opts = useFinanceQueryOptions()
   return useQuery({
-    ...financeQueryOptions,
+    ...opts,
     notifyOnChangeProps: ['data', 'error', 'isFetching'],
   })
 }
 
 export function useAccounts(): Account[] {
+  const opts = useFinanceQueryOptions()
   const { data } = useQuery({
-    ...financeQueryOptions,
+    ...opts,
     select: (d) => d.accounts,
   })
   return data ?? []
 }
 
 export function useTransactions(): Transaction[] {
+  const opts = useFinanceQueryOptions()
   const { data } = useQuery({
-    ...financeQueryOptions,
+    ...opts,
     select: (d) => d.transactions,
   })
   return data ?? []
 }
 
 export function useCustomCategories() {
+  const opts = useFinanceQueryOptions()
   const { data } = useQuery({
-    ...financeQueryOptions,
+    ...opts,
     select: (d) => d.customCategories,
   })
   return data ?? []
 }
 
 export function useAccountBalance(accountId: string) {
+  const opts = useFinanceQueryOptions()
   const { data = 0 } = useQuery({
-    ...financeQueryOptions,
+    ...opts,
     select: (d) => {
       const account = d.accounts.find((a) => a.id === accountId)
       if (!account) return 0
@@ -83,8 +98,9 @@ export function useAccountBalance(accountId: string) {
 }
 
 export function useTotalsByCurrency() {
+  const opts = useFinanceQueryOptions()
   const { data } = useQuery({
-    ...financeQueryOptions,
+    ...opts,
     select: computeTotalsByCurrency,
   })
   return data ?? new Map<Currency, number>()
@@ -94,61 +110,160 @@ export function useIsFinanceMutating() {
   return useIsMutating({ mutationKey: financeKeys.all }) > 0
 }
 
-function useFinanceMutation<TInput>(
+// ---------------------------------------------------------------------------
+// Mutation helper
+// ---------------------------------------------------------------------------
+
+function useFinanceMutation<TInput, TResult>(
   updater: (data: FinanceData, input: TInput) => FinanceData,
+  mutationFn: (input: TInput) => Promise<TResult>,
 ) {
   const queryClient = useQueryClient()
 
-  return useMutation<FinanceData, Error, TInput, FinanceContext>({
+  return useMutation<TResult, Error, TInput, FinanceContext>({
     mutationKey: financeKeys.all,
+    mutationFn,
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: financeKeys.all })
-      const previous = queryClient.getQueryData<FinanceData>(financeKeys.all) ?? readData()
-      queryClient.setQueryData<FinanceData>(financeKeys.all, updater(previous, input))
+      const previous = queryClient.getQueryData<FinanceData>(financeKeys.all)
+      if (previous) {
+        queryClient.setQueryData<FinanceData>(
+          financeKeys.all,
+          updater(previous, input),
+        )
+      }
       return { previous }
-    },
-    mutationFn: async () => {
-      const current = queryClient.getQueryData<FinanceData>(financeKeys.all)
-      if (!current) throw new Error('Datos no disponibles')
-      return persistFinanceData(current)
     },
     onError: (_error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(financeKeys.all, context.previous)
       }
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(financeKeys.all, data)
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: financeKeys.all })
     },
   })
 }
 
+// ---------------------------------------------------------------------------
+// Mutation hooks
+// ---------------------------------------------------------------------------
+
 export function useCreateAccount() {
-  return useFinanceMutation(addAccount)
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, input: CreateAccountInput) =>
+      addAccount(data, {
+        name: input.name,
+        currency: input.currency as Currency,
+        initialBalance: input.initialBalance,
+      }),
+    (input) => strategy.createAccount(input),
+  )
+}
+
+/**
+ * Input type for the update-account hook. The form sends `balance` (the
+ * displayed balance), which `finance-store.updateAccount` uses to
+ * back-calculate the correct `initialBalance`.
+ */
+interface UpdateAccountHookInput {
+  id: string
+  name: string
+  currency: string
+  balance: number
 }
 
 export function useUpdateAccount() {
-  return useFinanceMutation(updateAccount)
+  const strategy = usePersistence()
+  const queryClient = useQueryClient()
+
+  return useFinanceMutation(
+    (data, input: UpdateAccountHookInput) =>
+      updateAccount(data, {
+        id: input.id,
+        name: input.name,
+        currency: input.currency as Currency,
+        balance: input.balance,
+      }),
+    (input) => {
+      // After the optimistic update runs, the cache has the correct
+      // initialBalance (back-calculated by finance-store.updateAccount).
+      // Read it from cache to pass to the strategy.
+      const cached = queryClient.getQueryData<FinanceData>(financeKeys.all)
+      const updatedAccount = cached?.accounts.find((a) => a.id === input.id)
+      return strategy.updateAccount({
+        id: input.id,
+        name: input.name,
+        currency: input.currency,
+        initialBalance: updatedAccount?.initialBalance ?? input.balance,
+      })
+    },
+  )
 }
 
 export function useCreateTransaction() {
-  return useFinanceMutation(addTransaction)
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, input: CreateTransactionInput) =>
+      addTransaction(data, {
+        accountId: input.accountId,
+        type: input.type,
+        amount: input.amount,
+        description: input.description,
+        category: input.category,
+        date: input.date,
+      }),
+    (input) => strategy.createTransaction(input),
+  )
 }
 
 export function useUpdateTransaction() {
-  return useFinanceMutation(updateTransaction)
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, input: UpdateTransactionInput) => {
+      const existing = data.transactions.find((tx) => tx.id === input.id)
+      if (!existing) return data
+      return updateTransaction(data, {
+        id: input.id,
+        accountId: input.accountId ?? existing.accountId,
+        type: input.type ?? existing.type,
+        amount: input.amount ?? existing.amount,
+        description: input.description ?? existing.description,
+        category: input.category ?? existing.category,
+        date: input.date ?? existing.date,
+      })
+    },
+    (input) => strategy.updateTransaction(input),
+  )
 }
 
 export function useDeleteTransaction() {
-  return useFinanceMutation((data, id: string) => removeTransaction(data, id))
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, id: string) => removeTransaction(data, id),
+    (id) => strategy.deleteTransaction(id),
+  )
 }
 
 export function useDeleteAccount() {
-  return useFinanceMutation((data, id: string) => removeAccount(data, id))
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, id: string) => removeAccount(data, id),
+    (id) => strategy.deleteAccount(id),
+  )
 }
 
 export function useCreateCustomCategory() {
-  return useFinanceMutation(addCustomCategory)
+  const strategy = usePersistence()
+  return useFinanceMutation(
+    (data, input: CreateCategoryInput) =>
+      addCustomCategory(data, {
+        name: input.name,
+        type: input.type,
+      }),
+    (input) => strategy.createCategory(input),
+  )
 }
 
 export { computeAccountBalance }

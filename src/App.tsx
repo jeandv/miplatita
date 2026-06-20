@@ -1,27 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Account, Transaction } from './types/finance'
 import { useAccounts, useIsFinanceMutating, useTransactions } from './hooks/useFinance'
 import { usePrivacy } from './hooks/usePrivacy'
 import { useTheme } from './hooks/useTheme'
+import { useAuth } from './contexts/AuthProvider'
 import { AccountForm } from './components/AccountForm'
 import { AccountsView } from './components/AccountsView'
+import { AuthScreen } from './components/auth/AuthScreen'
 import { CategoryStats } from './components/CategoryStats'
 import { CurrencyTotals } from './components/CurrencyTotals'
+import { ImportDialog } from './components/ImportDialog'
+import { ProfileView } from './components/ProfileView'
 import { SyncIndicator } from './components/SyncIndicator'
 import { TopGradient } from './components/TopGradient'
 import { TransactionForm } from './components/TransactionForm'
 import { TransactionList } from './components/TransactionList'
 
 type Tab = 'movements' | 'stats'
-type Screen = 'home' | 'accounts'
+type Screen = 'home' | 'accounts' | 'profile'
 
 export default function App() {
+  const { isAuthenticated, isLoading, user } = useAuth()
   const accounts = useAccounts()
   const transactions = useTransactions()
   const isMutating = useIsFinanceMutating()
   const { amountsHidden, toggleAmountsHidden } = usePrivacy()
   const { theme, toggleTheme } = useTheme()
 
+  const [isGuest, setIsGuest] = useState(false)
   const [screen, setScreen] = useState<Screen>('home')
   const [activeTab, setActiveTab] = useState<Tab>('movements')
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -33,6 +39,12 @@ export default function App() {
   const [showTransactionForm, setShowTransactionForm] = useState(false)
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense')
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsGuest(false)
+    }
+  }, [isAuthenticated])
 
   function openCreateAccount() {
     setEditingAccount(null)
@@ -64,6 +76,41 @@ export default function App() {
   function closeTransactionForm() {
     setShowTransactionForm(false)
     setEditingTransaction(null)
+  }
+
+  function handleLogout() {
+    setIsGuest(false)
+    setScreen('home')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="relative flex min-h-dvh items-center justify-center bg-app text-app-fg">
+        <TopGradient />
+        <div className="relative z-10 text-center">
+          <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
+          <div className="mt-4 flex justify-center">
+            <svg className="h-6 w-6 animate-spin text-emerald-400" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated && !isGuest) {
+    return <AuthScreen onGuestAccess={() => setIsGuest(true)} />
+  }
+
+  if (screen === 'profile' && isAuthenticated) {
+    return (
+      <ProfileView
+        onBack={() => setScreen('home')}
+        onLogout={handleLogout}
+      />
+    )
   }
 
   if (screen === 'accounts') {
@@ -102,8 +149,36 @@ export default function App() {
       <TopGradient />
       <div className="relative z-10 mx-auto max-w-lg px-4 pb-28 pt-safe">
         <header className="mb-6 pt-4">
-          <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
-          <p className="text-sm text-app-muted">Control de gastos e ingresos</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
+              <p className="text-sm text-app-muted">
+                {isAuthenticated && user ? `Bienvenido, ${user.name}` : 'Control de gastos e ingresos'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => setScreen('profile')}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 transition-colors hover:bg-emerald-500/25"
+                  aria-label="Perfil"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsGuest(false)}
+                  className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+                >
+                  Iniciar sesión
+                </button>
+              )}
+            </div>
+          </div>
         </header>
 
         {accounts.length > 0 ? (
@@ -208,6 +283,7 @@ export default function App() {
         defaultType={transactionType}
         transaction={editingTransaction}
       />
+      <ImportDialog />
     </div>
   )
 }
