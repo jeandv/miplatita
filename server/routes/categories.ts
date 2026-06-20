@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
-import { db } from '../db'
-import { customCategory } from '../db/schema'
-import type { AppEnv } from '../types'
+import { db } from '../db/index.js'
+import { customCategory } from '../db/schema.js'
+import type { AppEnv } from '../types.js'
 
 export const categoryRoutes = new Hono<AppEnv>()
 

@@ -1,12 +1,12 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { auth } from './auth'
-import { authMiddleware } from './middleware/auth'
-import { accountRoutes } from './routes/accounts'
-import { transactionRoutes } from './routes/transactions'
-import { categoryRoutes } from './routes/categories'
-import { financeRoutes } from './routes/finance'
-import type { AppEnv } from './types'
+import { auth } from './auth.js'
+import { authMiddleware } from './middleware/auth.js'
+import { accountRoutes } from './routes/accounts.js'
+import { transactionRoutes } from './routes/transactions.js'
+import { categoryRoutes } from './routes/categories.js'
+import { financeRoutes } from './routes/finance.js'
+import type { AppEnv } from './types.js'
 
 const app = new Hono<AppEnv>()
 

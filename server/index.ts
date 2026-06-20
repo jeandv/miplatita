@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { serve } from '@hono/node-server'
-import app from './app'
+import app from './app.js'
 
 const port = 3001
 console.log(`Server running on http://localhost:${port}`)

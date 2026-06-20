@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { eq, and, asc } from 'drizzle-orm'
-import { db } from '../db'
-import { financeAccount } from '../db/schema'
-import type { AppEnv } from '../types'
+import { db } from '../db/index.js'
+import { financeAccount } from '../db/schema.js'
+import type { AppEnv } from '../types.js'
 
 export const accountRoutes = new Hono<AppEnv>()
 
