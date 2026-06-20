@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSession } from '../lib/auth-client'
 import {
   type PersistenceStrategy,
@@ -18,17 +18,28 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 const localPersistence = new LocalPersistence()
 const apiPersistence = new ApiPersistence()
 
+const LOADING_TIMEOUT_MS = 4000
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession()
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (!isPending) return
+    const id = setTimeout(() => setTimedOut(true), LOADING_TIMEOUT_MS)
+    return () => clearTimeout(id)
+  }, [isPending])
+
+  const isLoading = isPending && !timedOut
 
   const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated: !!session?.user,
-      isLoading: isPending,
+      isLoading,
       user: session?.user ?? null,
       strategy: session?.user ? apiPersistence : localPersistence,
     }),
-    [session, isPending],
+    [session, isLoading],
   )
 
   return (

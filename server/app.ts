@@ -20,6 +20,17 @@ app.use('/api/*', cors({
   credentials: true,
 }))
 
+app.get('/api/health', (c) => {
+  return c.json({
+    ok: true,
+    env: {
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'MISSING',
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ? 'SET' : 'MISSING',
+      BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? 'MISSING',
+    },
+  })
+})
+
 app.on(['POST', 'GET'], '/api/auth/**', async (c) => {
   try {
     return await auth.handler(c.req.raw)
