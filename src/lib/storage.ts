@@ -32,3 +32,12 @@ export function saveFinanceData(data: FinanceData): void {
 export function generateId(): string {
   return crypto.randomUUID()
 }
+
+export function hasLocalData(): boolean {
+  const data = loadFinanceData()
+  return data.accounts.length > 0 || data.transactions.length > 0
+}
+
+export function clearFinanceData(): void {
+  localStorage.removeItem(STORAGE_KEY)
+}

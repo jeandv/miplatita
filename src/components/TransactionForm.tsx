@@ -91,8 +91,7 @@ export function TransactionForm({
     createCustomCategory.mutate(
       { name: newCategoryName.trim(), type },
       {
-        onSuccess: (result) => {
-          const newCat = result.customCategories.at(-1)
+        onSuccess: (newCat) => {
           if (newCat) setCategory(newCat.id)
           setShowNewCategory(false)
           setNewCategoryName('')
