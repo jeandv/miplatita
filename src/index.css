@@ -44,6 +44,20 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  button:not(:disabled),
+  a,
+  [role="button"],
+  label[for] {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   body {
@@ -173,6 +187,28 @@
 
 .animate-sync-bar {
   animation: sync-bar 0.8s ease-in-out infinite;
+}
+
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(-50%, -18px) scale(1.06);
+    opacity: 0.8;
+  }
+}
+
+.animate-ambient-float {
+  animation: ambient-float 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ambient-float {
+    animation: none;
+  }
 }
 
 @media (min-width: 640px) {
