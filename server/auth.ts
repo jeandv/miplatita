@@ -4,6 +4,7 @@ import { db } from './db'
 import { user, session, authAccount, verification } from './db/schema'
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL,
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
@@ -21,5 +22,8 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
   },
-  trustedOrigins: ['http://localhost:5173'],
+  trustedOrigins: [
+    'http://localhost:5173',
+    process.env.BETTER_AUTH_URL ?? '',
+  ].filter(Boolean),
 })
