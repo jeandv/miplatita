@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTheme } from '../../hooks/useTheme'
+import { InView } from '../motion/InView'
+import { TextEffect } from '../motion/TextEffect'
+import { TextShimmer } from '../motion/TextShimmer'
+import { Magnetic } from '../motion/Magnetic'
+import { Tilt } from '../motion/Tilt'
 
 interface LandingPageProps {
   onRegister: () => void
@@ -9,9 +13,11 @@ interface LandingPageProps {
 }
 
 /**
- * Reveal-on-scroll wrapper. Fades + slides its children into view the first
- * time they enter the viewport. Smooth and gentle (700ms ease-out), never
- * abrupt, and fully disabled for users who prefer reduced motion.
+ * Reveal-on-scroll wrapper, now powered by motion-primitives' `InView`.
+ * Fades + blur-slides its children into view the first time they enter the
+ * viewport. `delay` is in milliseconds (kept for call-site compatibility) and
+ * converted to seconds for motion. Reduced-motion is handled globally by the
+ * <MotionConfig reducedMotion="user"> in main.tsx.
  */
 function Reveal({
   children,
@@ -22,56 +28,28 @@ function Reveal({
   delay?: number
   className?: string
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReduced) {
-      setVisible(true)
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' },
-    )
-
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
   return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={[
-        'transition-all duration-700 ease-out will-change-transform',
-        visible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+    <InView
+      className={className}
+      once
+      viewOptions={{ once: true, margin: '0px 0px -40px 0px' }}
+      variants={{
+        hidden: { opacity: 0, y: 24, filter: 'blur(4px)' },
+        visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
+      }}
+      transition={{ duration: 0.6, delay: delay / 1000, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
-    </div>
+    </InView>
   )
 }
 
-/** Decorative emerald glow. Reused across sections to keep the visual identity. */
+/** Decorative monochrome glow. Reused across sections for a subtle premium depth. */
 function Glow({ className = '' }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={['pointer-events-none absolute rounded-full bg-emerald-500/20 blur-3xl', className]
+      className={['pointer-events-none absolute rounded-full bg-app-accent-soft blur-3xl', className]
         .filter(Boolean)
         .join(' ')}
     />
@@ -186,7 +164,7 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
             href="#top"
             className="flex items-center gap-2 transition-opacity duration-200 hover:opacity-80"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-app-accent text-app-accent-fg shadow-accent">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path
                   strokeLinecap="round"
@@ -195,7 +173,9 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
                 />
               </svg>
             </span>
-            <span className="text-base font-bold tracking-tight">Mi Platita</span>
+            <TextShimmer as="span" duration={3} className="text-base font-bold tracking-tight">
+              Mi Platita
+            </TextShimmer>
           </a>
 
           <div className="flex items-center gap-1.5">
@@ -231,13 +211,15 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
             >
               Iniciar sesión
             </button>
-            <button
-              type="button"
-              onClick={onRegister}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-emerald-400 active:scale-[0.97]"
-            >
-              Registrarse
-            </button>
+            <Magnetic intensity={0.4} range={120}>
+              <button
+                type="button"
+                onClick={onRegister}
+                className="btn-sheen rounded-lg bg-app-accent bg-app-accent-hover px-4 py-2 text-sm font-semibold text-app-accent-fg shadow-accent transition-all duration-200 active:scale-[0.97]"
+              >
+                Registrarse
+              </button>
+            </Magnetic>
           </div>
         </nav>
       </header>
@@ -246,54 +228,68 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
       <main id="top" className="relative z-10">
         <section className="mx-auto max-w-3xl px-5 pb-16 pt-10 text-center sm:pt-16">
           <Reveal>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-app bg-app-accent-soft px-4 py-1.5 text-sm text-app-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-app-accent" />
               Gratis · Sin tarjeta · Multi-moneda
             </div>
           </Reveal>
 
-          <Reveal delay={80}>
-            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-              Tu plata, por fin
-              <br />
-              <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                bajo control.
-              </span>
-            </h1>
-          </Reveal>
+          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+            <TextEffect as="span" per="word" preset="fade-in-blur" className="inline">
+              Controla tu
+            </TextEffect>
+            <br />
+            <TextEffect
+              as="span"
+              per="word"
+              preset="fade-in-blur"
+              delay={0.35}
+              className="inline bg-gradient-to-r from-[var(--app-fg)] to-[var(--app-muted)] bg-clip-text text-transparent"
+            > 
+              Plata fácil.
+            </TextEffect>
+          </h1>
 
-          <Reveal delay={160}>
-            <p className="mx-auto mt-6 max-w-xl text-lg text-app-muted sm:text-xl">
-              Registra gastos e ingresos en segundos, en todas tus monedas, y mira
-              exactamente a dónde se va cada centavo. Simple, rápido y sin vueltas.
-            </p>
-          </Reveal>
+          <TextEffect
+            as="p"
+            per="word"
+            preset="fade-in-blur"
+            delay={0.7}
+            speedReveal={1.6}
+            className="mx-auto mt-6 max-w-xl text-lg text-app-muted sm:text-xl"
+          >
+            Registra gastos e ingresos en segundos, en todas tus monedas, y mira exactamente a dónde se va cada centavo. Simple, rápido y sin vueltas.
+          </TextEffect>
 
           <Reveal delay={240}>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={onRegister}
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 hover:shadow-emerald-500/40 active:scale-[0.97] sm:w-auto"
-              >
-                Crear mi cuenta gratis
-                <svg
-                  className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
+              <Magnetic intensity={0.5} range={160} className="w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={onRegister}
+                  className="btn-sheen group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent bg-app-accent-hover px-8 py-4 text-base font-semibold text-app-accent-fg shadow-accent transition-all duration-200 active:scale-[0.97] sm:w-auto"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={onGuest}
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-app bg-app-surface/50 px-8 py-4 text-base font-medium text-app-fg transition-all duration-200 hover:bg-app-elevated active:scale-[0.97] sm:w-auto"
-              >
-                Probar como invitado
-              </button>
+                  Crear mi cuenta gratis
+                  <svg
+                    className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
+              </Magnetic>
+              <Magnetic intensity={0.3} range={140} className="w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={onGuest}
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-app bg-app-surface/50 px-8 py-4 text-base font-medium text-app-fg transition-all duration-200 hover:bg-app-elevated active:scale-[0.97] sm:w-auto"
+                >
+                  Probar como invitado
+                </button>
+              </Magnetic>
             </div>
           </Reveal>
         </section>
@@ -314,16 +310,18 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
 
           <div className="relative grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => (
-              <Reveal key={feature.title} delay={i * 70}>
-                <article className="h-full rounded-2xl border border-app bg-app-surface/50 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-app-surface">
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-                      {feature.icon}
-                    </svg>
-                  </div>
-                  <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
-                  <p className="text-sm leading-relaxed text-app-muted">{feature.description}</p>
-                </article>
+              <Reveal key={feature.title} delay={i * 70} className="h-full">
+                <Tilt rotationFactor={6} className="h-full">
+                  <article className="h-full rounded-2xl border border-app bg-app-surface/50 p-6 transition-colors duration-300 hover:border-app-accent hover:bg-app-surface hover:shadow-premium">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-app-accent text-app-accent-fg shadow-accent">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                        {feature.icon}
+                      </svg>
+                    </div>
+                    <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
+                    <p className="text-sm leading-relaxed text-app-muted">{feature.description}</p>
+                  </article>
+                </Tilt>
               </Reveal>
             ))}
           </div>
@@ -342,7 +340,7 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
             {steps.map((step, i) => (
               <Reveal key={step.number} delay={i * 100}>
                 <div className="h-full rounded-2xl border border-app bg-app-surface/50 p-6">
-                  <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-base font-bold text-white">
+                  <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-app-accent text-base font-bold text-app-accent-fg shadow-accent">
                     {step.number}
                   </span>
                   <h3 className="mb-2 text-lg font-semibold">{step.title}</h3>
@@ -356,7 +354,7 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
         {/* ---------- Final CTA ---------- */}
         <section className="mx-auto max-w-5xl px-5 py-16">
           <Reveal>
-            <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/5 px-6 py-14 text-center">
+            <div className="relative overflow-hidden rounded-3xl border border-app bg-app-accent-soft px-6 py-14 text-center">
               <Glow className="left-1/2 top-0 h-64 w-64 -translate-x-1/2" />
               <div className="relative">
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -367,13 +365,15 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
                   y toma menos de un minuto.
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={onRegister}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-[0.97] sm:w-auto"
-                  >
-                    Crear mi cuenta gratis
-                  </button>
+                  <Magnetic intensity={0.5} range={160} className="w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={onRegister}
+                      className="btn-sheen inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent bg-app-accent-hover px-8 py-4 text-base font-semibold text-app-accent-fg shadow-accent transition-all duration-200 active:scale-[0.97] sm:w-auto"
+                    >
+                      Crear mi cuenta gratis
+                    </button>
+                  </Magnetic>
                   <button
                     type="button"
                     onClick={onLogin}
@@ -392,7 +392,7 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
       <footer className="relative z-10 border-t border-app">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-5 py-8 pb-safe text-sm text-app-muted sm:flex-row">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-app-accent text-app-accent-fg">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path
                   strokeLinecap="round"
@@ -410,7 +410,7 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
               href="https://jeanrondon.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-emerald-400 transition-colors duration-200 hover:text-emerald-300"
+              className="font-semibold text-app-accent transition-opacity duration-200 hover:opacity-70"
             >
               jeanrondon.dev
             </a>

@@ -39,14 +39,6 @@ export function formatMonthYear(date: Date): string {
 }
 
 export function formatDayHeader(date: Date): string {
-  const today = startOfDay(new Date())
-  const target = startOfDay(date)
-
-  if (isSameDay(today, target)) return 'Hoy'
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (isSameDay(yesterday, target)) return 'Ayer'
-
   return new Intl.DateTimeFormat('es', {
     weekday: 'long',
     day: 'numeric',
@@ -71,6 +63,23 @@ export function toDateInputValue(date: Date): string {
 export function parseDateInput(value: string): Date {
   const [y, m, d] = value.split('-').map(Number)
   return new Date(y, m - 1, d)
+}
+
+/**
+ * Convert a calendar-day input ("YYYY-MM-DD") into a stored ISO string.
+ *
+ * A transaction date is a calendar day, NOT an instant. Parsing "YYYY-MM-DD"
+ * directly with `new Date()` interprets it as UTC midnight, which then reads
+ * back as the *previous* day in any negative-offset timezone (e.g. -03:00,
+ * -04:00). Anchoring at NOON UTC keeps the calendar day stable for every
+ * realistic timezone (UTC-11 … UTC+11) regardless of where it is read.
+ */
+export function dateInputToISO(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T12:00:00.000Z`).toISOString()
+  }
+  // Already a full datetime string — keep as-is.
+  return new Date(value).toISOString()
 }
 
 export function groupTransactionsByDay(

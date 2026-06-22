@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Category, Transaction, TransactionType } from '../types/finance'
 import { getCategoriesForType } from '../lib/categories'
 import { toDateInputValue } from '../lib/date'
+import { parseDecimal, sanitizeDecimalInput } from '../lib/decimal'
 import {
   useAccounts,
   useCreateCustomCategory,
@@ -10,22 +11,22 @@ import {
   useDeleteTransaction,
   useUpdateTransaction,
 } from '../hooks/useFinance'
-import { BottomSheet } from './BottomSheet'
 import { Button } from './Button'
+import { FormScreen } from './FormScreen'
 import { InputField, SelectField, TextAreaField } from './FormFields'
 
 interface TransactionFormProps {
-  open: boolean
   onClose: () => void
   defaultType?: TransactionType
   transaction?: Transaction | null
+  defaultAccountId?: string
 }
 
 export function TransactionForm({
-  open,
   onClose,
   defaultType = 'expense',
   transaction,
+  defaultAccountId,
 }: TransactionFormProps) {
   const accounts = useAccounts()
   const customCategories = useCustomCategories()
@@ -35,47 +36,25 @@ export function TransactionForm({
   const createCustomCategory = useCreateCustomCategory()
 
   const isEditing = !!transaction
+  const initialType = transaction?.type ?? defaultType
 
-  const [type, setType] = useState<TransactionType>(defaultType)
-  const [accountId, setAccountId] = useState('')
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<Category>(
-    defaultType === 'income' ? 'salary' : 'food',
+  const [type, setType] = useState<TransactionType>(initialType)
+  const [accountId, setAccountId] = useState(
+    transaction?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? '',
   )
-  const [date, setDate] = useState(toDateInputValue(new Date()))
+  const [amount, setAmount] = useState(
+    transaction ? String(transaction.amount) : '',
+  )
+  const [description, setDescription] = useState(transaction?.description ?? '')
+  const [category, setCategory] = useState<Category>(
+    transaction?.category ?? (initialType === 'income' ? 'salary' : 'food'),
+  )
+  const [date, setDate] = useState(
+    toDateInputValue(transaction ? new Date(transaction.date) : new Date()),
+  )
   const [error, setError] = useState('')
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
-
-  useEffect(() => {
-    if (open && transaction) {
-      setType(transaction.type)
-      setAccountId(transaction.accountId)
-      setAmount(String(transaction.amount))
-      setDescription(transaction.description)
-      setCategory(transaction.category)
-      setDate(toDateInputValue(new Date(transaction.date)))
-      setShowNewCategory(false)
-      setNewCategoryName('')
-      setError('')
-    } else if (open && !transaction) {
-      setType(defaultType)
-      setAccountId(accounts[0]?.id ?? '')
-      setAmount('')
-      setDescription('')
-      setCategory(defaultType === 'income' ? 'salary' : 'food')
-      setDate(toDateInputValue(new Date()))
-      setShowNewCategory(false)
-      setNewCategoryName('')
-      setError('')
-    }
-  }, [open, transaction, defaultType, accounts])
-
-  function handleClose() {
-    setError('')
-    onClose()
-  }
 
   function handleTypeChange(newType: TransactionType) {
     setType(newType)
@@ -104,7 +83,7 @@ export function TransactionForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const parsedAmount = parseFloat(amount)
+    const parsedAmount = parseDecimal(amount)
 
     if (!accountId) {
       setError('Selecciona una cuenta')
@@ -133,16 +112,16 @@ export function TransactionForm({
     if (isEditing && transaction) {
       updateTransaction.mutate(
         { id: transaction.id, ...payload },
-        { onSuccess: handleClose, onError },
+        { onSuccess: onClose, onError },
       )
     } else {
-      createTransaction.mutate(payload, { onSuccess: handleClose, onError })
+      createTransaction.mutate(payload, { onSuccess: onClose, onError })
     }
   }
 
   function handleDelete() {
     if (!transaction) return
-    deleteTransaction.mutate(transaction.id, { onSuccess: handleClose })
+    deleteTransaction.mutate(transaction.id, { onSuccess: onClose })
   }
 
   const categories = getCategoriesForType(type, customCategories)
@@ -151,26 +130,22 @@ export function TransactionForm({
     updateTransaction.isPending ||
     deleteTransaction.isPending
 
+  const title = isEditing
+    ? type === 'income'
+      ? 'Editar ingreso'
+      : 'Editar gasto'
+    : type === 'income'
+      ? 'Nuevo ingreso'
+      : 'Nuevo gasto'
+
   return (
-    <BottomSheet
-      open={open}
-      onClose={handleClose}
-      title={
-        isEditing
-          ? type === 'income'
-            ? 'Editar ingreso'
-            : 'Editar gasto'
-          : type === 'income'
-            ? 'Nuevo ingreso'
-            : 'Nuevo gasto'
-      }
-    >
+    <FormScreen title={title} onBack={onClose}>
       {accounts.length === 0 ? (
         <div className="py-8 text-center">
           <p className="text-sm text-app-muted">
             Primero crea una cuenta para registrar movimientos
           </p>
-          <Button variant="secondary" className="mt-4" onClick={handleClose}>
+          <Button variant="secondary" className="mt-4" onClick={onClose}>
             Entendido
           </Button>
         </div>
@@ -220,13 +195,11 @@ export function TransactionForm({
 
           <InputField
             label="Monto"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0.01"
-            step="0.01"
             placeholder="0.00"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))}
           />
 
           <TextAreaField
@@ -252,7 +225,7 @@ export function TransactionForm({
               <button
                 type="button"
                 onClick={() => setShowNewCategory(true)}
-                className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+                className="text-xs font-medium text-app-accent transition-opacity hover:opacity-70"
               >
                 + Crear nueva categoría
               </button>
@@ -316,6 +289,6 @@ export function TransactionForm({
           )}
         </form>
       )}
-    </BottomSheet>
+    </FormScreen>
   )
 }

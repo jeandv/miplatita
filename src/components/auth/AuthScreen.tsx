@@ -27,7 +27,9 @@ export function AuthScreen({ mode, onSwitchMode, onGuestAccess, onBack }: AuthSc
           </button>
         )}
         <header className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          </h1>
           <p className="text-sm text-app-muted">Control de gastos e ingresos</p>
         </header>
 

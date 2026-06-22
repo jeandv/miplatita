@@ -5,6 +5,8 @@ import { CURRENCY_AMOUNT_COLOR, CURRENCY_ORDER } from '../lib/currency-styles'
 import { formatCurrency } from '../lib/date'
 import { maskAmount } from '../lib/settings'
 import { useAccountBalance } from '../hooks/useFinance'
+import { AnimatedGroup } from './motion/AnimatedGroup'
+import { AnimatedNumber } from './motion/AnimatedNumber'
 import { CurrencyTotals } from './CurrencyTotals'
 
 interface AccountsViewProps {
@@ -14,6 +16,7 @@ interface AccountsViewProps {
   onTogglePrivacy: () => void
   onToggleTheme: () => void
   onAddAccount: () => void
+  onViewMovements: (account: Account) => void
   onEditAccount: (account: Account) => void
   onBack: () => void
 }
@@ -21,31 +24,56 @@ interface AccountsViewProps {
 function AccountRow({
   account,
   amountsHidden,
+  onView,
   onEdit,
 }: {
   account: Account
   amountsHidden: boolean
+  onView: (account: Account) => void
   onEdit: (account: Account) => void
 }) {
   const balance = useAccountBalance(account.id)
 
   return (
-    <button
-      type="button"
-      onClick={() => onEdit(account)}
-      className="flex w-full items-center justify-between rounded-xl bg-app-surface-muted px-4 py-3 text-left transition-colors hover:bg-app-elevated active:scale-[0.99]"
-    >
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-app-fg">{account.name}</p>
-        <p className="text-xs text-app-subtle">{CURRENCY_LABELS[account.currency]}</p>
-      </div>
-      <div className="flex-shrink-0 text-right">
-        <p className={`text-sm font-semibold ${CURRENCY_AMOUNT_COLOR[account.currency]}`}>
-          {amountsHidden ? maskAmount(true) : formatCurrency(balance, account.currency)}
-        </p>
-        <p className="text-xs text-app-subtle">Editar</p>
-      </div>
-    </button>
+    <div className="flex items-center gap-2 rounded-xl bg-app-surface-muted pr-2 transition-colors hover:bg-app-elevated">
+      {/* Primary action: open this account's movements (filtered list). */}
+      <button
+        type="button"
+        onClick={() => onView(account)}
+        className="flex min-w-0 flex-1 items-center justify-between px-4 py-3 text-left active:scale-[0.99]"
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-app-fg">{account.name}</p>
+          <p className="text-xs text-app-subtle">{CURRENCY_LABELS[account.currency]}</p>
+        </div>
+        <div className="flex-shrink-0 pl-2 text-right">
+          <p className={`text-sm font-semibold ${CURRENCY_AMOUNT_COLOR[account.currency]}`}>
+            {amountsHidden ? (
+              maskAmount(true)
+            ) : (
+              <AnimatedNumber
+                value={balance}
+                format={(v) => formatCurrency(v, account.currency)}
+                springOptions={{ stiffness: 120, damping: 24 }}
+              />
+            )}
+          </p>
+          <p className="text-xs text-app-subtle">Ver movimientos</p>
+        </div>
+      </button>
+
+      {/* Secondary action: edit the account. */}
+      <button
+        type="button"
+        onClick={() => onEdit(account)}
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-app-elevated text-app-muted transition-colors hover:bg-app-hover hover:text-app-fg active:scale-95"
+        aria-label={`Editar ${account.name}`}
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+        </svg>
+      </button>
+    </div>
   )
 }
 
@@ -56,6 +84,7 @@ export function AccountsView({
   onTogglePrivacy,
   onToggleTheme,
   onAddAccount,
+  onViewMovements,
   onEditAccount,
   onBack,
 }: AccountsViewProps) {
@@ -100,7 +129,7 @@ export function AccountsView({
           <button
             type="button"
             onClick={onAddAccount}
-            className="mt-4 text-sm font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+            className="mt-4 text-sm font-semibold text-app-accent transition-opacity hover:opacity-70"
           >
             + Agregar cuenta
           </button>
@@ -119,7 +148,7 @@ export function AccountsView({
             <button
               type="button"
               onClick={onAddAccount}
-              className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+              className="text-xs font-semibold text-app-accent transition-opacity hover:opacity-70"
             >
               + Agregar cuenta
             </button>
@@ -133,16 +162,26 @@ export function AccountsView({
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-app-subtle">
                     {CURRENCY_LABELS[currency]}
                   </h3>
-                  <div className="space-y-2">
+                  <AnimatedGroup
+                    preset="blur-slide"
+                    className="space-y-2"
+                    variants={{
+                      container: {
+                        hidden: {},
+                        visible: { transition: { staggerChildren: 0.05 } },
+                      },
+                    }}
+                  >
                     {currencyAccounts.map((account) => (
                       <AccountRow
                         key={account.id}
                         account={account}
                         amountsHidden={amountsHidden}
+                        onView={onViewMovements}
                         onEdit={onEditAccount}
                       />
                     ))}
-                  </div>
+                  </AnimatedGroup>
                 </div>
               )
             })}

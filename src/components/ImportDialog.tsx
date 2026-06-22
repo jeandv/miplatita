@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePersistence, useAuth } from '../contexts/AuthProvider'
 import { hasLocalData, clearFinanceData, loadFinanceData } from '../lib/storage'
 import { financeKeys } from '../lib/query-keys'
+import { AnimatedNumber } from './motion/AnimatedNumber'
 import { BottomSheet } from './BottomSheet'
 import { Button } from './Button'
 
@@ -55,18 +56,22 @@ export function ImportDialog() {
 
       <div className="mb-5 flex gap-4 rounded-xl bg-app-elevated px-4 py-3">
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-lg font-semibold text-emerald-400">
-            {summary.accounts}
-          </span>
+          <AnimatedNumber
+            as="span"
+            className="text-lg font-semibold text-app-fg"
+            value={summary.accounts}
+          />
           <span className="text-xs text-app-muted">
             {summary.accounts === 1 ? 'cuenta' : 'cuentas'}
           </span>
         </div>
         <div className="h-auto w-px bg-app-hover" />
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-lg font-semibold text-emerald-400">
-            {summary.transactions}
-          </span>
+          <AnimatedNumber
+            as="span"
+            className="text-lg font-semibold text-app-fg"
+            value={summary.transactions}
+          />
           <span className="text-xs text-app-muted">
             {summary.transactions === 1 ? 'movimiento' : 'movimientos'}
           </span>

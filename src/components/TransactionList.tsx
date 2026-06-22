@@ -12,6 +12,8 @@ import {
 } from '../lib/date'
 import { maskAmount } from '../lib/settings'
 import { useCustomCategories } from '../hooks/useFinance'
+import { AnimatedGroup } from './motion/AnimatedGroup'
+import { AnimatedNumber } from './motion/AnimatedNumber'
 import { MonthNavigator } from './MonthNavigator'
 
 interface TransactionListProps {
@@ -23,6 +25,9 @@ interface TransactionListProps {
   onAccountFilterChange: (accountId: string | null) => void
   onEditTransaction: (transaction: Transaction) => void
   amountsHidden?: boolean
+  /** Hide the per-account filter pills (e.g. when already scoped to one account). */
+  hideAccountFilter?: boolean
+
 }
 
 export function TransactionList({
@@ -34,6 +39,7 @@ export function TransactionList({
   onAccountFilterChange,
   onEditTransaction,
   amountsHidden = false,
+  hideAccountFilter = false,
 }: TransactionListProps) {
   const customCategories = useCustomCategories()
 
@@ -86,7 +92,7 @@ export function TransactionList({
 
   return (
     <div className="space-y-4">
-      <MonthNavigator currentMonth={currentMonth} onMonthChange={onMonthChange} />
+        <MonthNavigator currentMonth={currentMonth} onMonthChange={onMonthChange} />
 
       {currencyTotals.length > 0 && (
         <div className="space-y-3">
@@ -95,17 +101,33 @@ export function TransactionList({
               {currencyTotals.length > 1 && (
                 <p className="mb-2 text-xs font-medium text-app-subtle">{currency}</p>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-emerald-500/10 px-4 py-3">
-                  <p className="text-xs text-emerald-400/80">Ingresos</p>
-                  <p className="text-sm font-semibold text-emerald-400">
-                    {amountsHidden ? maskAmount(true) : `+${formatCurrency(totals.income, currency)}`}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-md bg-red-500/10 px-2 py-1.5">
+                  <p className="text-[9px] font-medium uppercase tracking-wider text-red-400/80">Gastos</p>
+                  <p className="text-[11px] font-semibold text-red-400">
+                    {amountsHidden ? (
+                      maskAmount(true)
+                    ) : (
+                      <AnimatedNumber
+                        value={totals.expense}
+                        format={(v) => `-${formatCurrency(v, currency)}`}
+                        springOptions={{ stiffness: 120, damping: 24 }}
+                      />
+                    )}
                   </p>
                 </div>
-                <div className="rounded-xl bg-red-500/10 px-4 py-3">
-                  <p className="text-xs text-red-400/80">Gastos</p>
-                  <p className="text-sm font-semibold text-red-400">
-                    {amountsHidden ? maskAmount(true) : `-${formatCurrency(totals.expense, currency)}`}
+                <div className="rounded-md bg-emerald-500/10 px-2 py-1.5">
+                  <p className="text-[9px] font-medium uppercase tracking-wider text-emerald-400/80">Ingresos</p>
+                  <p className="text-[11px] font-semibold text-emerald-400">
+                    {amountsHidden ? (
+                      maskAmount(true)
+                    ) : (
+                      <AnimatedNumber
+                        value={totals.income}
+                        format={(v) => `+${formatCurrency(v, currency)}`}
+                        springOptions={{ stiffness: 120, damping: 24 }}
+                      />
+                    )}
                   </p>
                 </div>
               </div>
@@ -114,7 +136,7 @@ export function TransactionList({
         </div>
       )}
 
-      {accounts.length > 0 && (
+      {!hideAccountFilter && accounts.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button
             type="button"
@@ -122,7 +144,7 @@ export function TransactionList({
             className={[
               'flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
               selectedAccountId === null
-                ? 'bg-emerald-500/20 text-emerald-400'
+                ? 'bg-app-accent text-app-accent-fg'
                 : 'bg-app-elevated text-app-muted hover:text-app-fg',
             ].join(' ')}
           >
@@ -136,7 +158,7 @@ export function TransactionList({
               className={[
                 'flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
                 selectedAccountId === account.id
-                  ? 'bg-emerald-500/20 text-emerald-400'
+                  ? 'bg-app-accent text-app-accent-fg'
                   : 'bg-app-elevated text-app-muted hover:text-app-fg',
               ].join(' ')}
             >
@@ -146,12 +168,13 @@ export function TransactionList({
         </div>
       )}
 
-      {sortedDays.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-app-dashed bg-app-surface/50 py-10 text-center">
-          <p className="text-sm text-app-muted">No hay movimientos este mes</p>
-        </div>
-      ) : (
-        <div className="space-y-5">
+      <div className="mt-4">
+        {sortedDays.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-app-dashed bg-app-surface/50 py-10 text-center">
+            <p className="text-sm text-app-muted">No hay movimientos este mes</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
           {sortedDays.map((dayKey) => {
             const dayTxs = grouped.get(dayKey) ?? []
             const dayDate = parseDateInput(dayKey)
@@ -161,7 +184,16 @@ export function TransactionList({
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-app-subtle">
                   {formatDayHeader(dayDate)}
                 </h3>
-                <div className="space-y-2">
+                <AnimatedGroup
+                  preset="blur-slide"
+                  className="space-y-2"
+                  variants={{
+                    container: {
+                      hidden: {},
+                      visible: { transition: { staggerChildren: 0.04 } },
+                    },
+                  }}
+                >
                   {dayTxs.map((tx) => {
                     const account = accountMap.get(tx.accountId)
                     const isIncome = tx.type === 'income'
@@ -206,12 +238,13 @@ export function TransactionList({
                       </button>
                     )
                   })}
-                </div>
+                </AnimatedGroup>
               </div>
             )
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
