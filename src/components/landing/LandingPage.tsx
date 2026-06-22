@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { motion } from 'motion/react'
 import { useTheme } from '../../hooks/useTheme'
 import { InView } from '../motion/InView'
 import { TextEffect } from '../motion/TextEffect'
@@ -239,15 +240,23 @@ export function LandingPage({ onRegister, onLogin, onGuest }: LandingPageProps) 
               Controla tu
             </TextEffect>
             <br />
-            <TextEffect
-              as="span"
-              per="word"
-              preset="fade-in-blur"
-              delay={0.35}
-              className="inline bg-gradient-to-r from-[var(--app-fg)] to-[var(--app-muted)] bg-clip-text text-transparent"
-            > 
+            {/*
+              Gradient text must keep `bg-clip-text` on the SAME element that
+              holds the glyphs. TextEffect splits text into transformed/filtered
+              child spans, and iOS Safari refuses to clip an ancestor's gradient
+              onto text inside a transformed descendant → the words rendered
+              fully transparent (invisible) on mobile. A single motion.span
+              animating opacity+y (no filter on the clipped element) is safe
+              across browsers.
+            */}
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="inline-block bg-gradient-to-r from-[var(--app-fg)] to-[var(--app-muted)] bg-clip-text text-transparent"
+            >
               Plata fácil.
-            </TextEffect>
+            </motion.span>
           </h1>
 
           <TextEffect
