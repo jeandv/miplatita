@@ -4,9 +4,22 @@ import { useAuth } from './contexts/AuthProvider'
 import { AuthScreen } from './components/auth/AuthScreen'
 import { LandingPage } from './components/landing/LandingPage'
 import { FinanceApp } from './FinanceApp'
+import { TextShimmer } from './components/motion/TextShimmer'
+
+/** Shown while better-auth restores the session, to avoid flashing the landing
+ * page before redirecting an already-logged-in user to the app. */
+function AuthBootSplash() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-app text-app-fg">
+      <TextShimmer as="span" duration={1.5} className="text-2xl font-bold tracking-tight">
+        Mi Platita
+      </TextShimmer>
+    </div>
+  )
+}
 
 export default function App() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const [isGuest, setIsGuest] = useState(false)
 
@@ -25,11 +38,17 @@ export default function App() {
       <Route
         path="/"
         element={
-          <LandingPage
-            onRegister={() => navigate('/register')}
-            onLogin={() => navigate('/login')}
-            onGuest={enterGuest}
-          />
+          isLoading ? (
+            <AuthBootSplash />
+          ) : isAuthenticated ? (
+            <Navigate to="/app" replace />
+          ) : (
+            <LandingPage
+              onRegister={() => navigate('/register')}
+              onLogin={() => navigate('/login')}
+              onGuest={enterGuest}
+            />
+          )
         }
       />
 
