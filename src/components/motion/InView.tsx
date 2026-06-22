@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from 'react'
+import { type ReactNode, useMemo, useRef, useState } from 'react'
 import {
   motion,
   useInView,
@@ -38,7 +38,14 @@ export function InView({
   const isInView = useInView(ref, viewOptions)
   const [isViewed, setIsViewed] = useState(false)
 
-  const MotionComponent = motion.create(as as React.ElementType)
+  // `motion.create` returns a brand-new component identity on every call.
+  // Calling it inline would make React unmount/remount the subtree on each
+  // render, resetting the animation to `initial` (opacity:0) — which is why
+  // reveal elements intermittently stayed invisible. Memoize on `as`.
+  const MotionComponent = useMemo(
+    () => motion.create(as as React.ElementType),
+    [as],
+  )
 
   return (
     <MotionComponent

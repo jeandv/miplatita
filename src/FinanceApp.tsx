@@ -162,9 +162,20 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
           <div className="flex items-start justify-between">
             <div>
               <TextShimmer as="h1" duration={3} className="text-2xl font-bold tracking-tight">Mi Platita</TextShimmer>
-              <p className="text-sm text-app-muted">
-                {ROTATING_MESSAGES[messageIndex]}
-              </p>
+              <div className="relative h-5 text-sm text-app-muted">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={messageIndex}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.6, ease: 'easeInOut' }}
+                    className="absolute inset-0"
+                  >
+                    {ROTATING_MESSAGES[messageIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </div>
             <div className="flex items-center gap-2 pt-1">
               {isAuthenticated ? (

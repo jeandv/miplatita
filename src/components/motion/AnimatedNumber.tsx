@@ -1,6 +1,6 @@
 import { cn } from '../../lib/cn'
 import { motion, type SpringOptions, useSpring, useTransform } from 'motion/react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 export type AnimatedNumberProps = {
   value: number
@@ -22,7 +22,12 @@ export function AnimatedNumber({
   as = 'span',
   format,
 }: AnimatedNumberProps) {
-  const MotionComponent = motion.create(as as React.ElementType)
+  // Memoize: an inline `motion.create` would remount on every value change,
+  // resetting the spring and making the number jump instead of animating.
+  const MotionComponent = useMemo(
+    () => motion.create(as as React.ElementType),
+    [as],
+  )
 
   const spring = useSpring(value, springOptions)
   const display = useTransform(spring, (current) =>

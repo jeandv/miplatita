@@ -17,7 +17,12 @@ function TextShimmerComponent({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) {
-  const MotionComponent = motion.create(Component as React.ElementType)
+  // Memoize: `motion.create` makes a new component type each call, which would
+  // remount the node (and restart the shimmer) on every render.
+  const MotionComponent = useMemo(
+    () => motion.create(Component as React.ElementType),
+    [Component],
+  )
 
   const dynamicSpread = useMemo(() => {
     return children.length * spread
