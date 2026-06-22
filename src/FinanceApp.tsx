@@ -170,7 +170,7 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.6, ease: 'easeInOut' }}
-                    className="absolute inset-0"
+                    className="absolute inset-0 whitespace-nowrap"
                   >
                     {ROTATING_MESSAGES[messageIndex]}
                   </motion.p>
