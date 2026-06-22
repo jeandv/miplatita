@@ -8,6 +8,7 @@ import {
   type PeriodFilter,
 } from '../lib/date'
 import { useCustomCategories } from '../hooks/useFinance'
+import { AnimatedNumber } from './motion/AnimatedNumber'
 
 interface CategoryStatsProps {
   transactions: Transaction[]
@@ -62,9 +63,9 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-app-muted">Gastos por categoría</h2>
-      </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-app-muted">Gastos por categoría</h2>
+        </div>
 
       <div className="flex rounded-xl bg-app-elevated p-1">
         {(['day', 'week', 'month'] as PeriodFilter[]).map((p) => (
@@ -94,7 +95,7 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
               className={[
                 'flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
                 activeCurrency === currency
-                  ? 'bg-emerald-500/20 text-emerald-400'
+                  ? 'bg-app-accent text-app-accent-fg'
                   : 'bg-app-elevated text-app-muted hover:text-app-fg',
               ].join(' ')}
             >
@@ -104,7 +105,8 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
         </div>
       )}
 
-      {stats.length === 0 ? (
+      <div className="mt-4 pb-4">
+        {stats.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-app-dashed bg-app-surface/50 py-10 text-center">
           <p className="text-sm text-app-muted">
             No hay gastos en este período
@@ -140,9 +142,13 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xs text-app-subtle">{activeCurrency}</span>
-              <span className="text-sm font-bold text-app-fg">
-                {formatCurrency(totalExpenses, activeCurrency)}
-              </span>
+              <AnimatedNumber
+                as="span"
+                className="text-sm font-bold text-app-fg"
+                value={totalExpenses}
+                format={(v) => formatCurrency(v, activeCurrency)}
+                springOptions={{ stiffness: 120, damping: 24 }}
+              />
             </div>
           </div>
 
@@ -160,9 +166,13 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
                       <span className="text-sm text-app-muted">
                         {getCategoryLabel(stat.category, customCategories)}
                       </span>
-                      <span className="text-sm font-medium text-app-fg">
-                        {stat.percentage}%
-                      </span>
+                      <AnimatedNumber
+                        as="span"
+                        className="text-sm font-medium text-app-fg"
+                        value={stat.percentage}
+                        format={(v) => `${Math.round(v)}%`}
+                        springOptions={{ stiffness: 120, damping: 24 }}
+                      />
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-app-elevated">
                       <div
@@ -179,7 +189,8 @@ export function CategoryStats({ transactions, accounts }: CategoryStatsProps) {
             })}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

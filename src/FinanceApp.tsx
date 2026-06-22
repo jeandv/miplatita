@@ -1,22 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import type { Account, Transaction } from './types/finance'
 import { useAccounts, useIsFinanceMutating, useTransactions } from './hooks/useFinance'
 import { usePrivacy } from './hooks/usePrivacy'
 import { useTheme } from './hooks/useTheme'
 import { useAuth } from './contexts/AuthProvider'
+import { AccountDetailView } from './components/AccountDetailView'
 import { AccountForm } from './components/AccountForm'
 import { AccountsView } from './components/AccountsView'
 import { CategoryStats } from './components/CategoryStats'
 import { CurrencyTotals } from './components/CurrencyTotals'
+import { GrainGradient } from './components/GrainGradient'
 import { ImportDialog } from './components/ImportDialog'
 import { ProfileView } from './components/ProfileView'
 import { SyncIndicator } from './components/SyncIndicator'
 import { TopGradient } from './components/TopGradient'
 import { TransactionForm } from './components/TransactionForm'
 import { TransactionList } from './components/TransactionList'
+import { TextShimmer } from './components/motion/TextShimmer'
 
 type Tab = 'movements' | 'stats'
-type Screen = 'home' | 'accounts' | 'profile'
+type Screen =
+  | 'home'
+  | 'accounts'
+  | 'account-detail'
+  | 'profile'
+  | 'account-form'
+  | 'transaction-form'
 
 interface FinanceAppProps {
   /** Leave the app entirely (logout) and return to the landing page. */
@@ -25,8 +35,24 @@ interface FinanceAppProps {
   onRequestLogin: () => void
 }
 
+const ROTATING_MESSAGES = [
+  'Control de gastos e ingresos',
+  'Cuida tu plata',
+  'No gastes tanto',
+  'Sé inteligente',
+  'Lograrás tu meta',
+]
+
 export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
+  const [messageIndex, setMessageIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % ROTATING_MESSAGES.length)
+    }, 20000)
+    return () => clearInterval(interval)
+  }, [])
   const accounts = useAccounts()
   const transactions = useTransactions()
   const isMutating = useIsFinanceMutating()
@@ -38,95 +64,106 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
 
-  const [showAccountForm, setShowAccountForm] = useState(false)
+  // Screen to return to when a full-page form closes.
+  const [formOrigin, setFormOrigin] = useState<Screen>('home')
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
-
-  const [showTransactionForm, setShowTransactionForm] = useState(false)
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense')
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  // Account whose dedicated detail screen is open (looked up live for freshness).
+  const [detailAccountId, setDetailAccountId] = useState<string | null>(null)
+  const detailAccount = accounts.find((a) => a.id === detailAccountId) ?? null
 
-  function openCreateAccount() {
+  function openCreateAccount(origin: Screen) {
     setEditingAccount(null)
-    setShowAccountForm(true)
+    setFormOrigin(origin)
+    setScreen('account-form')
   }
 
-  function openEditAccount(account: Account) {
+  function openEditAccount(account: Account, origin: Screen = 'accounts') {
     setEditingAccount(account)
-    setShowAccountForm(true)
+    setFormOrigin(origin)
+    setScreen('account-form')
   }
 
-  function closeAccountForm() {
-    setShowAccountForm(false)
-    setEditingAccount(null)
+  function viewAccountMovements(account: Account) {
+    setDetailAccountId(account.id)
+    setScreen('account-detail')
   }
 
-  function openTransactionForm(type: 'expense' | 'income') {
+  function openTransactionForm(type: 'expense' | 'income', origin: Screen = 'home') {
     setEditingTransaction(null)
     setTransactionType(type)
-    setShowTransactionForm(true)
+    setFormOrigin(origin)
+    setScreen('transaction-form')
   }
 
-  function openEditTransaction(transaction: Transaction) {
+  function openEditTransaction(transaction: Transaction, origin: Screen = 'home') {
     setEditingTransaction(transaction)
     setTransactionType(transaction.type)
-    setShowTransactionForm(true)
+    setFormOrigin(origin)
+    setScreen('transaction-form')
   }
 
-  function closeTransactionForm() {
-    setShowTransactionForm(false)
+  function closeForm() {
+    setEditingAccount(null)
     setEditingTransaction(null)
+    setScreen(formOrigin)
   }
 
-  if (screen === 'profile' && isAuthenticated) {
-    return (
-      <ProfileView
-        onBack={() => setScreen('home')}
-        onLogout={onLogout}
+  const isFormOpen = screen === 'account-form' || screen === 'transaction-form'
+  const activeBaseScreen = isFormOpen ? formOrigin : screen
+
+  let baseContent: ReactNode
+
+  if (activeBaseScreen === 'account-detail' && detailAccount) {
+    baseContent = (
+      <AccountDetailView
+        account={detailAccount}
+        transactions={transactions}
+        amountsHidden={amountsHidden}
+        onBack={() => setScreen('accounts')}
+        onEditAccount={(account) => openEditAccount(account, 'account-detail')}
+        onEditTransaction={(tx) => openEditTransaction(tx, 'account-detail')}
+        onAddTransaction={(type) => openTransactionForm(type, 'account-detail')}
       />
     )
-  }
-
-  if (screen === 'accounts') {
-    return (
-      <div className="relative min-h-dvh bg-app text-app-fg">
-        {isMutating && <SyncIndicator />}
+  } else if (activeBaseScreen === 'profile' && isAuthenticated) {
+    baseContent = <ProfileView onBack={() => setScreen('home')} onLogout={onLogout} />
+  } else if (activeBaseScreen === 'accounts') {
+    baseContent = (
+      <div className="relative flex min-h-dvh flex-col bg-app text-app-fg">
         <TopGradient />
-        <div className="relative z-10 mx-auto max-w-lg px-4 pb-28 pt-safe">
+        <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pt-safe">
           <header className="mb-6 pt-4">
-            <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Cuentas</h1>
           </header>
-          <AccountsView
-            accounts={accounts}
-            amountsHidden={amountsHidden}
-            theme={theme}
-            onTogglePrivacy={toggleAmountsHidden}
-            onToggleTheme={toggleTheme}
-            onAddAccount={openCreateAccount}
-            onEditAccount={openEditAccount}
-            onBack={() => setScreen('home')}
-          />
+          <div className="-mx-4 flex-1 px-4 pb-8">
+            <AccountsView
+              accounts={accounts}
+              amountsHidden={amountsHidden}
+              theme={theme}
+              onTogglePrivacy={toggleAmountsHidden}
+              onToggleTheme={toggleTheme}
+              onAddAccount={() => openCreateAccount('accounts')}
+              onViewMovements={viewAccountMovements}
+              onEditAccount={openEditAccount}
+              onBack={() => setScreen('home')}
+            />
+          </div>
         </div>
-
-        <AccountForm
-          open={showAccountForm}
-          onClose={closeAccountForm}
-          account={editingAccount}
-        />
       </div>
     )
-  }
-
-  return (
-    <div className="relative min-h-dvh bg-app text-app-fg">
-      {isMutating && <SyncIndicator />}
-      <TopGradient />
-      <div className="relative z-10 mx-auto max-w-lg px-4 pb-28 pt-safe">
+  } else {
+    baseContent = (
+    <div className="relative flex min-h-dvh flex-col bg-app text-app-fg">
+      <GrainGradient />
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pt-safe pb-28">
         <header className="mb-6 pt-4">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Mi Platita</h1>
+              <TextShimmer as="h1" duration={3} className="text-2xl font-bold tracking-tight">Mi Platita</TextShimmer>
               <p className="text-sm text-app-muted">
-                {isAuthenticated && user ? `Bienvenido, ${user.name}` : 'Control de gastos e ingresos'}
+                {ROTATING_MESSAGES[messageIndex]}
               </p>
             </div>
             <div className="flex items-center gap-2 pt-1">
@@ -134,7 +171,7 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
                 <button
                   type="button"
                   onClick={() => setScreen('profile')}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 transition-colors hover:bg-emerald-500/25"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-app-accent-soft text-app-fg transition-colors bg-app-accent-soft-hover"
                   aria-label="Perfil"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -145,7 +182,7 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
                 <button
                   type="button"
                   onClick={onRequestLogin}
-                  className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+                  className="text-xs font-semibold text-app-accent transition-opacity hover:opacity-70"
                 >
                   Iniciar sesión
                 </button>
@@ -170,8 +207,8 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
               <p className="text-sm text-app-muted">Crea tu primera cuenta para empezar</p>
               <button
                 type="button"
-                onClick={openCreateAccount}
-                className="mt-3 text-sm font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+                onClick={() => openCreateAccount('home')}
+                className="mt-3 text-sm font-semibold text-app-accent transition-opacity hover:opacity-70"
               >
                 + Agregar cuenta
               </button>
@@ -245,18 +282,59 @@ export function FinanceApp({ onLogout, onRequestLogin }: FinanceAppProps) {
         </div>
       </div>
 
-      <AccountForm
-        open={showAccountForm}
-        onClose={closeAccountForm}
-        account={editingAccount}
-      />
-      <TransactionForm
-        open={showTransactionForm}
-        onClose={closeTransactionForm}
-        defaultType={transactionType}
-        transaction={editingTransaction}
-      />
       <ImportDialog />
     </div>
+    )
+  }
+
+  return (
+    <>
+      {isMutating && <SyncIndicator />}
+      <div style={{ display: isFormOpen ? 'none' : 'block' }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeBaseScreen}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            {baseContent}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {screen === 'account-form' && (
+          <motion.div
+            key="account-form"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 overflow-y-auto bg-app"
+          >
+            <AccountForm account={editingAccount} onClose={closeForm} />
+          </motion.div>
+        )}
+        {screen === 'transaction-form' && (
+          <motion.div
+            key="transaction-form"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 overflow-y-auto bg-app"
+          >
+            <TransactionForm
+              defaultType={transactionType}
+              transaction={editingTransaction}
+              defaultAccountId={detailAccountId ?? undefined}
+              onClose={closeForm}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

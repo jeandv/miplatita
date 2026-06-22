@@ -4,6 +4,7 @@ import { formatCurrency } from '../lib/date'
 import { maskAmount } from '../lib/settings'
 import { CURRENCY_ACCENT, CURRENCY_AMOUNT_COLOR, CURRENCY_ORDER } from '../lib/currency-styles'
 import { useTotalsByCurrency } from '../hooks/useFinance'
+import { AnimatedNumber } from './motion/AnimatedNumber'
 import { SettingsToolbar } from './SettingsToolbar'
 
 interface CurrencyTotalsProps {
@@ -61,7 +62,15 @@ export function CurrencyTotals({
               {CURRENCY_LABELS[currency]}
             </p>
             <p className={`mt-0.5 truncate text-base font-bold leading-tight ${CURRENCY_AMOUNT_COLOR[currency]}`}>
-              {amountsHidden ? maskAmount(true) : formatCurrency(total, currency)}
+              {amountsHidden ? (
+                maskAmount(true)
+              ) : (
+                <AnimatedNumber
+                  value={total}
+                  format={(v) => formatCurrency(v, currency)}
+                  springOptions={{ stiffness: 120, damping: 24 }}
+                />
+              )}
             </p>
           </div>
         ))}

@@ -100,7 +100,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+          className="font-semibold text-app-accent transition-opacity hover:opacity-70"
         >
           Inicia sesión
         </button>

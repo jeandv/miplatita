@@ -78,7 +78,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         <button
           type="button"
           onClick={onSwitchToRegister}
-          className="font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+          className="font-semibold text-app-accent transition-opacity hover:opacity-70"
         >
           Regístrate
         </button>

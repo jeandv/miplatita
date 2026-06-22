@@ -7,6 +7,7 @@ import type {
   TransactionType,
 } from '../types/finance'
 import { pickCustomCategoryColor } from './categories'
+import { dateInputToISO } from './date'
 import { generateId, saveFinanceData } from './storage'
 
 export function persistFinanceData(data: FinanceData): FinanceData {
@@ -77,7 +78,7 @@ export function addTransaction(
     amount: input.amount,
     description: input.description.trim(),
     category: input.category,
-    date: new Date(input.date).toISOString(),
+    date: dateInputToISO(input.date),
     createdAt: new Date().toISOString(),
   }
   return {
@@ -108,7 +109,7 @@ export function updateTransaction(
     amount: input.amount,
     description: input.description.trim(),
     category: input.category,
-    date: new Date(input.date).toISOString(),
+    date: dateInputToISO(input.date),
   }
 
   return {

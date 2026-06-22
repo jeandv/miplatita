@@ -7,8 +7,8 @@ interface FieldProps {
 
 const fieldClass = [
   'w-full rounded-xl border border-app bg-app-surface-muted px-4 py-3 text-app-fg',
-  'placeholder:text-app-subtle transition-colors',
-  'focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
+  'placeholder:text-app-subtle transition-all duration-200',
+  'focus:border-app-accent focus:outline-none focus:ring-2 ring-app-accent',
 ].join(' ')
 
 export function InputField({

@@ -44,7 +44,7 @@ export function MonthNavigator({ currentMonth, onMonthChange }: MonthNavigatorPr
           <button
             type="button"
             onClick={() => onMonthChange(new Date())}
-            className="text-xs text-emerald-400 transition-colors hover:text-emerald-300"
+            className="text-xs font-medium text-app-accent transition-opacity hover:opacity-70"
           >
             Ir a hoy
           </button>

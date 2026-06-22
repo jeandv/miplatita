@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Make the `dark:` variant follow the app's `data-theme` toggle instead of
+   the OS `prefers-color-scheme`, so copied components (e.g. TextShimmer) react
+   to the in-app theme switch. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
@@ -7,39 +12,61 @@
 @layer base {
   :root,
   [data-theme="dark"] {
-    --app-bg: #020617;
-    --app-surface: #0f172a;
-    --app-surface-muted: rgb(30 41 59 / 0.6);
-    --app-elevated: #1e293b;
-    --app-hover: #334155;
-    --app-border: #334155;
-    --app-border-dashed: #334155;
-    --app-fg: #ffffff;
-    --app-muted: #94a3b8;
-    --app-subtle: #64748b;
-    --app-tab-bg: #0f172a;
-    --app-tab-active: #1e293b;
-    --app-gradient-from: rgb(6 78 59 / 0.55);
-    --app-gradient-mid: rgb(16 185 129 / 0.18);
-    --app-bottom-bar: rgb(2 6 23 / 0.9);
+    --app-bg: #050505;
+    --app-surface: #111113;
+    --app-surface-muted: rgb(28 28 32 / 0.6);
+    --app-elevated: #1c1c20;
+    --app-hover: #2a2a30;
+    --app-border: #27272b;
+    --app-border-dashed: #34343a;
+    --app-fg: #fafafa;
+    --app-muted: #a1a1aa;
+    --app-subtle: #71717a;
+    --app-tab-bg: #111113;
+    --app-tab-active: #26262b;
+    --app-gradient-from: rgb(255 255 255 / 0.07);
+    --app-gradient-mid: rgb(255 255 255 / 0.02);
+    --app-bottom-bar: rgb(5 5 5 / 0.9);
+
+    /* Premium black & white accent system */
+    --app-accent: #fafafa;
+    --app-accent-hover: #ffffff;
+    --app-accent-fg: #0a0a0a;
+    --app-accent-soft: rgb(250 250 250 / 0.1);
+    --app-accent-soft-hover: rgb(250 250 250 / 0.16);
+    --app-ring: rgb(250 250 250 / 0.35);
+    --app-shadow-premium: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.45);
+    --app-shadow-accent: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(255 255 255 / 0.08);
+    --app-accent-sheen: rgb(255 255 255 / 0.18);
   }
 
   [data-theme="light"] {
-    --app-bg: #f8fafc;
+    --app-bg: #f5f5f4;
     --app-surface: #ffffff;
-    --app-surface-muted: rgb(241 245 249 / 0.9);
-    --app-elevated: #e2e8f0;
-    --app-hover: #cbd5e1;
-    --app-border: #e2e8f0;
-    --app-border-dashed: #cbd5e1;
-    --app-fg: #0f172a;
-    --app-muted: #64748b;
-    --app-subtle: #94a3b8;
-    --app-tab-bg: #e2e8f0;
+    --app-surface-muted: rgb(245 245 244 / 0.9);
+    --app-elevated: #ebebe9;
+    --app-hover: #dcdcd9;
+    --app-border: #e4e4e1;
+    --app-border-dashed: #d4d4d1;
+    --app-fg: #0a0a0a;
+    --app-muted: #57575c;
+    --app-subtle: #8e8e93;
+    --app-tab-bg: #e7e7e4;
     --app-tab-active: #ffffff;
-    --app-gradient-from: rgb(16 185 129 / 0.22);
-    --app-gradient-mid: rgb(16 185 129 / 0.08);
-    --app-bottom-bar: rgb(248 250 252 / 0.92);
+    --app-gradient-from: rgb(10 10 10 / 0.06);
+    --app-gradient-mid: rgb(10 10 10 / 0.02);
+    --app-bottom-bar: rgb(245 245 244 / 0.92);
+
+    /* Premium black & white accent system */
+    --app-accent: #0a0a0a;
+    --app-accent-hover: #000000;
+    --app-accent-fg: #ffffff;
+    --app-accent-soft: rgb(10 10 10 / 0.07);
+    --app-accent-soft-hover: rgb(10 10 10 / 0.12);
+    --app-ring: rgb(10 10 10 / 0.25);
+    --app-shadow-premium: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
+    --app-shadow-accent: 0 1px 2px rgb(0 0 0 / 0.15), 0 10px 28px rgb(0 0 0 / 0.18);
+    --app-accent-sheen: rgb(255 255 255 / 0.16);
   }
 
   html {
@@ -136,6 +163,70 @@
 
   .border-app-dashed {
     border-color: var(--app-border-dashed);
+  }
+
+  /* ---- Accent (black & white) utilities ---- */
+  .bg-app-accent {
+    background-color: var(--app-accent);
+  }
+
+  .bg-app-accent-hover:hover {
+    background-color: var(--app-accent-hover);
+  }
+
+  .bg-app-accent-soft {
+    background-color: var(--app-accent-soft);
+  }
+
+  .bg-app-accent-soft-hover:hover {
+    background-color: var(--app-accent-soft-hover);
+  }
+
+  .text-app-accent {
+    color: var(--app-accent);
+  }
+
+  .text-app-accent-fg {
+    color: var(--app-accent-fg);
+  }
+
+  .border-app-accent {
+    border-color: var(--app-accent);
+  }
+
+  .ring-app-accent {
+    --tw-ring-color: var(--app-ring);
+  }
+
+  .focus-ring:focus-visible {
+    outline: none;
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 3px var(--app-ring);
+  }
+
+  /* ---- Premium elevation ---- */
+  .shadow-premium {
+    box-shadow: var(--app-shadow-premium);
+  }
+
+  .shadow-accent {
+    box-shadow: var(--app-shadow-accent);
+  }
+
+  /* Subtle top sheen for premium accent buttons */
+  .btn-sheen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-sheen::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 50%;
+    background: linear-gradient(180deg, var(--app-accent-sheen), transparent);
+    opacity: 0.9;
+    pointer-events: none;
   }
 
   .bg-top-hero-gradient {

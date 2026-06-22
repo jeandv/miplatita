@@ -6,6 +6,19 @@ import type { AppEnv } from '../types.js'
 
 export const transactionRoutes = new Hono<AppEnv>()
 
+/**
+ * A transaction date is a calendar day, not an instant. Parsing "YYYY-MM-DD"
+ * as-is yields UTC midnight, which reads back as the previous day in negative
+ * offset timezones. Anchor at NOON UTC so the calendar day stays stable for
+ * every realistic timezone.
+ */
+function parseTransactionDate(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T12:00:00.000Z`)
+  }
+  return new Date(value)
+}
+
 transactionRoutes.get('/', async (c) => {
   const userId = c.get('userId')
   const accountId = c.req.query('accountId')
@@ -71,7 +84,7 @@ transactionRoutes.post('/', async (c) => {
       amount: String(body.amount),
       description: body.description ?? '',
       category: body.category,
-      date: new Date(body.date),
+      date: parseTransactionDate(body.date),
     })
     .returning()
 
@@ -96,7 +109,7 @@ transactionRoutes.put('/:id', async (c) => {
   if (body.amount != null) updates.amount = String(body.amount)
   if (body.description != null) updates.description = body.description
   if (body.category != null) updates.category = body.category
-  if (body.date != null) updates.date = new Date(body.date)
+  if (body.date != null) updates.date = parseTransactionDate(body.date)
 
   const [updated] = await db
     .update(transaction)

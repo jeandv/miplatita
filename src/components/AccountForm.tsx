@@ -1,58 +1,41 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { Account, Currency } from '../types/finance'
 import { CURRENCY_LABELS } from '../types/finance'
 import {
   computeAccountBalance,
   useCreateAccount,
+  useDeleteAccount,
   useTransactions,
   useUpdateAccount,
 } from '../hooks/useFinance'
-import { BottomSheet } from './BottomSheet'
+import { parseDecimal, sanitizeDecimalInput } from '../lib/decimal'
 import { Button } from './Button'
+import { FormScreen } from './FormScreen'
 import { InputField, SelectField } from './FormFields'
 
 interface AccountFormProps {
-  open: boolean
   onClose: () => void
   account?: Account | null
 }
 
-export function AccountForm({ open, onClose, account }: AccountFormProps) {
+export function AccountForm({ onClose, account }: AccountFormProps) {
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
+  const deleteAccount = useDeleteAccount()
   const transactions = useTransactions()
   const isEditing = !!account
-  const wasOpen = useRef(false)
 
-  const [name, setName] = useState('')
-  const [currency, setCurrency] = useState<Currency>('USD')
-  const [balance, setBalance] = useState('')
+  const [name, setName] = useState(account?.name ?? '')
+  const [currency, setCurrency] = useState<Currency>(account?.currency ?? 'USD')
+  const [balance, setBalance] = useState(
+    account ? String(computeAccountBalance(account, transactions)) : '',
+  )
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (open && !wasOpen.current) {
-      if (account) {
-        setName(account.name)
-        setCurrency(account.currency)
-        setBalance(String(computeAccountBalance(account, transactions)))
-      } else {
-        setName('')
-        setCurrency('USD')
-        setBalance('')
-      }
-      setError('')
-    }
-    wasOpen.current = open
-  }, [open, account, transactions])
-
-  function handleClose() {
-    setError('')
-    onClose()
-  }
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const amount = parseFloat(balance)
+    const amount = parseDecimal(balance)
 
     if (!name.trim()) {
       setError('El nombre es requerido')
@@ -68,7 +51,7 @@ export function AccountForm({ open, onClose, account }: AccountFormProps) {
     if (isEditing && account) {
       updateAccount.mutate(
         { id: account.id, name: name.trim(), currency, balance: amount },
-        { onSuccess: handleClose, onError },
+        { onSuccess: onClose, onError },
       )
     } else {
       if (amount < 0) {
@@ -77,26 +60,30 @@ export function AccountForm({ open, onClose, account }: AccountFormProps) {
       }
       createAccount.mutate(
         { name: name.trim(), currency, initialBalance: amount },
-        { onSuccess: handleClose, onError },
+        { onSuccess: onClose, onError },
       )
     }
   }
 
-  const isPending = createAccount.isPending || updateAccount.isPending
+  function handleDelete() {
+    if (!account) return
+    deleteAccount.mutate(account.id, {
+      onSuccess: onClose,
+      onError: () => setError('No se pudo eliminar la cuenta. Intenta de nuevo.'),
+    })
+  }
+
+  const isPending =
+    createAccount.isPending || updateAccount.isPending || deleteAccount.isPending
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={handleClose}
-      title={isEditing ? 'Editar cuenta' : 'Nueva cuenta'}
-    >
+    <FormScreen title={isEditing ? 'Editar cuenta' : 'Nueva cuenta'} onBack={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <InputField
           label="Nombre de la cuenta"
           placeholder="Ej: Banco Nacional, Efectivo..."
           value={name}
           onChange={(e) => setName(e.target.value)}
-          autoFocus
         />
         <SelectField
           label="Moneda"
@@ -111,12 +98,11 @@ export function AccountForm({ open, onClose, account }: AccountFormProps) {
         </SelectField>
         <InputField
           label={isEditing ? 'Saldo actual' : 'Saldo inicial'}
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="0.01"
           placeholder="0.00"
           value={balance}
-          onChange={(e) => setBalance(e.target.value)}
+          onChange={(e) => setBalance(sanitizeDecimalInput(e.target.value))}
         />
         {isEditing && (
           <p className="text-xs text-app-subtle">
@@ -131,7 +117,51 @@ export function AccountForm({ open, onClose, account }: AccountFormProps) {
               ? 'Guardar cambios'
               : 'Crear cuenta'}
         </Button>
+
+        {isEditing && (
+          <div className="pt-2">
+            {!confirmingDelete ? (
+              <Button
+                type="button"
+                variant="danger"
+                fullWidth
+                onClick={() => setConfirmingDelete(true)}
+                disabled={isPending}
+              >
+                Eliminar cuenta
+              </Button>
+            ) : (
+              <div className="space-y-3 rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
+                <p className="text-sm text-app-fg">
+                  ¿Seguro? Se eliminará la cuenta{' '}
+                  <span className="font-semibold">y todos sus movimientos</span>.
+                  Esta acción no se puede deshacer.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    fullWidth
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={isPending}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    fullWidth
+                    onClick={handleDelete}
+                    disabled={isPending}
+                  >
+                    {deleteAccount.isPending ? 'Eliminando...' : 'Sí, eliminar'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </form>
-    </BottomSheet>
+    </FormScreen>
   )
 }
